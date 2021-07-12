@@ -2,7 +2,10 @@
 
 load-module() {
   # set paths
-  local module_path="$HOME/.local/dotfiles/components"
+  local module_path
+  zstyle -s :plugins:load-module path module_path
+  module_path="${module_path:-$HOME/.local/dotfiles/modules}"
+
   local resource_path="$module_path/resources"
   local scripts_path="$resource_path/scripts"
 
