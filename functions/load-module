@@ -1,0 +1,207 @@
+#!/usr/bin/env zsh
+
+load-module() {
+  # set paths
+  local module_path="$HOME/.local/dotfiles/components"
+  local resource_path="$module_path/resources"
+  local scripts_path="$resource_path/scripts"
+
+  # test for yq
+  if (( ! $+commands[yq] )); then
+    echo "$fg_bold[red]yq is required to use load-module$reset_color"
+    return 1
+  fi
+
+  # test for pacaur
+  if (( ! $+commands[pacaur] )); then
+    echo "$fg_bold[red]pacaur is required to use load-module$reset_color"
+    return 1
+  fi
+
+  # test for yarn or npm
+  if (( ! $+commands[yarn] && ! $+commands[npm] )); then
+    echo "$fg_bold[red]yarn (or npm) is required to use load-module$reset_color"
+    return 1
+  fi
+
+
+  # read from the yaml file
+  function _read_yaml() {
+    yq eval "$1" $current_module_path
+  }
+
+  # install packages
+  function _install_packages() {
+    echo "$fg[blue][$name] Installing packages...$reset_color"
+
+    # install with pacaur
+    pacaur -S --quiet --noconfirm $@
+
+    # show the status of the installation
+    if test "$?" -eq "0"; then
+      echo "$fg[green][$name] Packages installed successfully!$reset_color"
+    else
+      echo "$fg[red][$name] Packages failed to install! Skipping module...$reset_color"
+      return 1
+    fi
+  }
+  
+  # install npm packages
+  function _install_npm() {
+    echo "$fg[blue][$name] Installing npm packages...$reset_color"
+
+    # install with yarn, if available
+    if (( $+commands[yarn] )); then
+      yarn global add ${(s: :)@}
+    else
+      npm -g install ${(s: :)@}
+    fi
+
+    # show the status of the installation
+    if test "$?" -eq "0"; then
+      echo "$fg[green][$name] NPM packages installed successfully!$reset_color"
+    else
+      echo "$fg[red][$name] NPM packages failed to install! Skipping module..$reset_color."
+      return 1
+    fi
+  }
+  
+  # install pip packages
+  function _install_pip() {
+    echo "$fg[blue][$name] Installing pip packages...$reset_color"
+
+    # install with pip
+    pip install ${(s: :)@}
+
+    # show the status of the installation
+    if test "$?" -eq "0"; then
+      echo "$fg[green][$name] Pip packages installed successfully!$reset_color"
+    else
+      echo "$fg[red][$name] Pip packages failed to install! Skipping module...$reset_color"
+      return 1
+    fi
+  }
+  
+  # install cargo crates
+  function _install_crates() {
+    echo "$fg[blue][$name] Installing crates...$reset_color"
+
+    # install with cargo
+    cargo install ${(s: :)@}
+
+  }
+
+  # run commands
+  function _run_commands() {
+    echo "$fg[blue][$name] Running commands...$reset_color"
+
+    # turn command string into aray
+    local cmds=(${(s|:|)cmds_str})
+
+    # print each command and run it
+    for cmd in $cmds; do
+      # test if file exists in scripts folder, run script if so
+      local script_file="$scripts_path/$cmd"
+      if test -f "$script_file"; then
+        echo "$fg[blue][$name]$fg[cyan] $(basename $script_file)$reset_color"
+        source "$script_file"
+      else
+        echo "$fg[blue][$name]$fg[cyan] $cmd$reset_color"
+        eval "$cmd"
+      fi
+    done
+  }
+
+  # function to run for each module
+  function _load() {
+    # get the path to the module file
+    local current_module_path="$module_path/$1.yaml"
+
+    # check that the module exists
+    if ! test -f "$current_module_path"; then
+      echo "$fg_bold[red]Module $1 doesn't exist! Skipping...$reset_color" 
+      return 1
+    fi
+
+    # get the name
+    local name="$(_read_yaml '.name')"
+    
+    echo "$fg[green]Loading module $name...$reset_color"
+
+    # get the rest of the variables
+    local packages="$(_read_yaml '.packages // [] | join(" ")')"
+    local npm="$(_read_yaml '.npm // [] | join(" ")')"
+    local pip="$(_read_yaml '.pip // [] | join(" ")')"
+    local crates="$(_read_yaml '.crates // [] | join(" ")')"
+    local cmds_str="$(_read_yaml '.commands // [] | join(":")')"
+
+    # TODO: add mechanism for resources
+    
+    # install packages if any
+    if ! test -z "$packages"; then
+      _install_packages $packages
+
+      # skip the rest of the module if packages failed
+      if ! test "$?" -eq "0"; then
+        continue
+      fi
+    fi
+
+    # install npm packages if any
+    if ! test -z "$npm"; then
+      _install_npm $npm
+
+      # skip the rest of the module if npm failed
+      if ! test "$?" -eq "0"; then
+        continue
+      fi
+    fi
+
+    # install pip packages if any
+    if ! test -z "$pip"; then
+      _install_pip $pip
+
+      # skip the rest of the module if pip failed
+      if ! test "$?" -eq "0"; then
+        continue
+      fi
+    fi
+
+    # install cargo crates if any
+    if ! test -z "$crates"; then
+      _install_crates $crates
+
+      # skip the rest of the module if crates failed
+      if ! test "$?" -eq "0"; then
+        continue
+      fi
+    fi
+
+    # run commands if any
+    if ! test -z "$cmds_str"; then
+      _run_commands $cmds_str
+
+      # skip the rest of the module if commands failed
+      if ! test "$?" -eq "0"; then
+        continue
+      fi
+    fi
+  }
+
+  # make sure there's at least one specified module
+  if test -z "$1"; then
+    echo "$fg_bold[red]you need to specify a module to load$reset_color"
+  fi
+
+  # run the load function for every specified module
+  for arg in $@; do
+    _load $arg
+  done
+
+  # show successful installation
+  echo "$fg_bold[green]Module(s) installed successfully!$reset_color"
+
+  # unload function
+  unfunction _load _read_yaml _install_packages _install_npm _install_pip _install_crates _run_commands
+}
+

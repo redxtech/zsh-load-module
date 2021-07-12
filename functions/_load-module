@@ -1,0 +1,9 @@
+#compdef load-module
+
+# completions for load-module
+_load_module () {
+  _arguments "*: :($(ls $HOME/.local/dotfiles/components | sed 's/.yaml$//'))"
+}
+
+_load_module
+
