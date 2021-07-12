@@ -2,7 +2,12 @@
 
 # completions for load-module
 _load_module () {
-  _arguments "*: :($(ls $HOME/.local/dotfiles/components | sed 's/.yaml$//'))"
+  # make sure using proper module path
+  local module_path
+  zstyle -s :plugins:module_path path module_path
+  module_path="${module_path:-$HOME/.local/dotfiles/modules}"
+
+  _arguments "*: :($(ls $module_path | sed 's/.yaml$//'))"
 }
 
 _load_module
