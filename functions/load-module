@@ -1,5 +1,8 @@
 #!/usr/bin/env zsh
 
+# TODO: add remove function
+# TODO: add pling-store functionality
+
 load-module() {
   # set paths
   local module_path
@@ -132,6 +135,7 @@ load-module() {
     echo "$fg[green]Loading module $name...$reset_color"
 
     # get the rest of the variables
+    local depends="$(_read_yaml '.depends // [] | join(" ")')"
     local packages="$(_read_yaml '.packages // [] | join(" ")')"
     local npm="$(_read_yaml '.npm // [] | join(" ")')"
     local pip="$(_read_yaml '.pip // [] | join(" ")')"
@@ -139,7 +143,15 @@ load-module() {
     local cmds_str="$(_read_yaml '.commands // [] | join(":")')"
 
     # TODO: add mechanism for resources
-    
+
+    # load dependency modules
+    if ! test -z "$depends"; then
+      # split into array on space
+      for dep in "${(ps: :)depends}"; do
+        _load "$dep"
+      done
+    fi
+
     # install packages if any
     if ! test -z "$packages"; then
       _install_packages $packages
