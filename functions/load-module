@@ -42,7 +42,7 @@ load-module() {
 
     # install with pacaur
     # pacaur -S --quiet --noconfirm $@
-    pacaur -S $@
+    pacaur -S --needed $@
 
     # show the status of the installation
     if test "$?" -eq "0"; then
