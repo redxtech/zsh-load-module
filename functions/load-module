@@ -41,8 +41,7 @@ load-module() {
     echo "$fg[blue][$name] Installing packages...$reset_color"
 
     # install with pacaur
-    # pacaur -S --quiet --noconfirm $@
-    pacaur -S --needed $@
+    pacaur -S --needed --noconfirm $@
 
     # show the status of the installation
     if test "$?" -eq "0"; then
