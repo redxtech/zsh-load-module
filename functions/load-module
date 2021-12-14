@@ -208,6 +208,9 @@ load-module() {
     echo "$fg_bold[red]you need to specify a module to load$reset_color"
   fi
 
+  # make sure packages are up to date
+  pacaur -Syu --noconfirm
+
   # run the load function for every specified module
   for arg in $@; do
     _load $arg
